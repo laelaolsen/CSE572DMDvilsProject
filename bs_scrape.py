@@ -17,6 +17,7 @@
 from bs4 import BeautifulSoup
 import requests
 import csv
+from urllib.parse import urljoin
 
 urls = []
 # the string 'do not sell' is facored to catch sites subject to California laws
@@ -28,15 +29,16 @@ def explore(url, parent_url, depth):
 
         # base cases
         if url in urls:
-            return 'False', url
+            return 'False', url #Returns false if url has already been tried
 
-        if not '.' in url:   # this is what handles reletive paths
+        if not '.' in url:   # this is what handles relative paths
             url = parent_url + url  # libraries may be needed to deal with syntax
+            print(parent_url, "added to", url)
         elif not url.startswith('https://') and not url.startswith('http://'):
-            url = 'https://' + url  #if list does not have
-        
+            url = 'https://' + url  #if list does not have (this occurrs for all URLs in the list)
         if depth > 2:
-            return 'False', url
+            print("depth greater than 2")
+            return 'False', url # often occurrs before false return, more than 2 recursions
         
         # current work
         try:
@@ -52,13 +54,16 @@ def explore(url, parent_url, depth):
         #         urls.append(url)
         #         return 'True', url, depth
 
+        # Explore links in the main content
         links = soup.find_all('a')
         for link in links:
             for s in strings:
                 if s in link.text.lower(): # try to eliminate case
-                    return 'True', link.get('href'), depth
+                    #print(link)
+                    absolute_url = urljoin(url, link.get('href'))
+                    return 'True', absolute_url, depth #searches for the keywords in the actual text of the link, not the url
 
-        # iteration
+        # iteration, if the correct link is not found, try exploring all of the links on that page
         links = soup.find_all('a')
         for hit in links:
             #print(hit)
@@ -68,12 +73,12 @@ def explore(url, parent_url, depth):
                 return result
 
         urls.append(url)
-        return 'False', url
+        return 'False', url #Returns false if all links are exhausted with no match
     except Exception as error:
         if url != None:
             urls.append(url)
         print(url, error)
-        return 'Gen_Error', url     # if found internal URL not a true URL
+        return 'Gen_Error', url  # if found internal URL not a true URL
 
 def csv_to_list(file_name):
     test_list_from_csv = []
@@ -89,7 +94,7 @@ def csv_to_list(file_name):
     return test_list_from_csv
 
 def scrape_base():
-    test_list_from_csv = csv_to_list('mini_input_test.csv') #('example_input_test.csv') # for 1,924 URL input
+    test_list_from_csv = csv_to_list('C:/Users/laela/Downloads/example_input_test.csv') #('example_input_test.csv') # for 1,924 URL input
     header = ['URL', 'String', 'String URL', 'Depth']
 
     #print(*test_list_from_csv, sep = '\n')
